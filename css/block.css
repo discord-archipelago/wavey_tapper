@@ -1,0 +1,128 @@
+body{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    
+    background-color: #DDD;
+}
+
+div#scene{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    background-color: #DDD;
+}
+
+cover{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    background-color: #DDD;
+    
+    opacity: 1;
+    transition: opacity 300ms;
+}
+
+cover svg{
+    height: 54%;
+}
+
+cube{
+    width: 200px;
+    height: 200px;
+    --s: 100px;
+    
+    /* transform: rotateX(-35.264389682754654deg) rotateY(-45deg); */
+    transform: rotateX(0deg) rotateY(0deg);
+    transform-style: preserve-3d;
+    
+    user-select: none;
+}
+
+cube[moving]{
+    transition: width 200ms, height 200ms;
+}
+
+face{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    position: absolute;
+    
+    width: 100%;
+    height: 100%;
+    background: #AAA;
+}
+
+cube[moving] face{
+    transition: transform 200ms;
+}
+
+.f1{
+    transform: rotateX(90deg) translateZ(var(--s));
+    /*background: #AAA;*/
+    background: #CBCBCB;
+}
+.f2{
+    transform: rotateX(-90deg) translateZ(var(--s));
+    background: #CBCBCB;
+}
+
+.f3{
+    transform: rotateY(90deg) translateZ(var(--s));
+    background: #333333;
+}
+.f4{
+    transform: rotateY(-90deg) translateZ(var(--s));
+    background: #333333;
+}
+
+.f5{
+    transform: rotateX(0deg) translateZ(var(--s));
+    background: #444444;
+}
+.f6{
+    transform: rotateY(-180deg) translateZ(var(--s));
+    background: #444444;
+}
+
+div#frame{
+    width: 81.81818181818183%;
+    height: 81.81818181818183%;
+}
+
+pxl{
+    display: inline-block;
+    width: 11.11111111111111%;
+    height: 11.11111111111111%;
+}
+
+#mute{
+    display: none;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding: 10px;
+    width: 15%;
+}

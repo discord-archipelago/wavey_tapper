@@ -1,0 +1,15 @@
+Drums
+Chord A Lock, Chord B Lock
+FA Front
+FA Back
+WWDTM High
+WWDTM Low
+SF Roll
+SF Tap
+PM
+Arp
+Noise
+DTMF
+Bass
+Spreader
+RadioLab

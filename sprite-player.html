@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wavetapper</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: #0a0a0f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    gap: 24px;
+    padding: 24px;
+}
+h1 { color: #333; font-size: 11px; letter-spacing: 6px; text-transform: uppercase; }
+#grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    width: min(90vw, 640px);
+}
+.block {
+    aspect-ratio: 1;
+    background: #111118;
+    border: 1px solid #1e1e2e;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.1s;
+    cursor: pointer;
+}
+.block.active {
+    border-color: var(--c);
+    box-shadow: 0 0 12px -2px var(--c);
+}
+.block-sprite {
+    width: 70%; height: 70%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    display: none;
+}
+.block-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.block-num { font-size: 22px; font-weight: bold; color: #222; transition: color 0.08s; }
+.block.active .block-num { color: var(--c); }
+.block-name { font-size: 8px; letter-spacing: 1px; color: #252535; text-transform: uppercase; }
+.block.active .block-name { color: #555; }
+.block-tile { position: absolute; bottom: 6px; right: 8px; font-size: 8px; color: #222; }
+.block.active .block-tile { color: var(--c); opacity: 0.7; }
+.block-flash {
+    position: absolute; inset: 0;
+    background: var(--c);
+    opacity: 0; pointer-events: none;
+    border-radius: 6px;
+    transition: opacity 0.05s;
+}
+#timeline { width: min(90vw, 640px); height: 3px; background: #1a1a2a; border-radius: 2px; overflow: hidden; }
+#tl-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #3b46ff, #8951fb, #ff57d6); transition: width 0.1s linear; }
+#status { font-size: 10px; color: #555; letter-spacing: 3px; }
+#upload-section { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#upload-label {
+    font-size: 10px; color: #333; letter-spacing: 2px;
+    border: 1px dashed #1e1e2e; padding: 8px 20px; border-radius: 4px;
+    cursor: pointer; transition: all 0.15s;
+}
+#upload-label:hover { color: #666; border-color: #333; }
+#upload-hint { font-size: 9px; color: #222; letter-spacing: 1px; }
+#upload-input { display: none; }
+</style>
+</head>
+<body>
+<h1>Wavetapper</h1>
+<div id="grid"></div>
+<div id="timeline"><div id="tl-bar"></div></div>
+<div id="status">LOADING...</div>
+<div id="upload-section">
+    <label id="upload-label" for="upload-input">+ 스프라이트 업로드</label>
+    <div id="upload-hint">blockID_tileIndex.png 형식 (예: 0_0.png, 0_1.png ...)</div>
+    <input type="file" id="upload-input" accept="image/*" multiple>
+</div>
+<script src="./js/prototype.js"></script>
+<script src="./js/data.js"></script>
+<script src="./js/tiles.js"></script>
+<script>
+const Bit_Seconds = 5 / 448;
+const Bit_Milliseconds = 625 / 56;
+
+const BlockNames = ['Drums','Chord','FA Front','FA Back','WWDTM Hi','WWDTM Lo','SF Roll','SF Tap','PM','Arp','Noise','DTMF','Bass','Spreader','Radiolab','Master'];
+const WavFolders = ['Drums','Chord','FA Front','FA Back','WWDTM High','WWDTM Low','SF Roll','SF Tap','PM','Arp','Noise','DTMF','Bass','Spreader','Radiolab',''];
+const BlockColors = ['#FF4A45','#FC903A','#F3CE37','#DEF030','#80E62E','#35E13E','#2CD88E','#3BE6CE','#34CDF8','#3485FF','#3B46FF','#8951FB','#DE57F6','#FF57D6','#FF5484','#A8A8A8'];
+
+let songData = {};
+let soundBuffers = {};
+let spriteImages = {};
+let blockEls = [];
+let isPlaying = false;
+let animFrame = null;
+let activeBlocks = new Array(16).fill(null);
+let activeTimers = [];
+
+// ── DOM ──────────────────────────────────────────
+function buildGrid() {
+    const grid = document.getElementById('grid');
+    for (let id = 0; id < 16; id++) {
+        const el = document.createElement('div');
+        el.className = 'block';
+        el.style.setProperty('--c', BlockColors[id]);
+        el.innerHTML = `
+            <div class="block-flash"></div>
+            <img class="block-sprite" id="sprite-${id}" alt="">
+            <div class="block-placeholder">
+                <div class="block-num">${id}</div>
+                <div class="block-name">${BlockNames[id]}</div>
+            </div>
+            <div class="block-tile" id="tile-label-${id}"></div>`;
+        grid.appendChild(el);
+        blockEls.push(el);
+    }
+}
+
+// ── 스프라이트 ────────────────────────────────────
+function activateBlock(id, tileIdx) {
+    const el = blockEls[id];
+    el.classList.add('active');
+    document.getElementById(`tile-label-${id}`).textContent = `T${tileIdx}`;
+    const img = document.getElementById(`sprite-${id}`);
+    const key = `${id}_${tileIdx}`;
+    if (spriteImages[key]) {
+        img.src = spriteImages[key];
+        img.style.display = 'block';
+        el.querySelector('.block-placeholder').style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        el.querySelector('.block-placeholder').style.display = 'flex';
+        el.querySelector('.block-num').textContent = tileIdx;
+    }
+    const flash = el.querySelector('.block-flash');
+    flash.style.opacity = '0.12';
+    setTimeout(() => flash.style.opacity = '0', 80);
+}
+
+function deactivateBlock(id) {
+    const el = blockEls[id];
+    el.classList.remove('active');
+    document.getElementById(`tile-label-${id}`).textContent = '';
+    el.querySelector('.block-num').textContent = id;
+    el.querySelector('.block-placeholder').style.display = 'flex';
+    document.getElementById(`sprite-${id}`).style.display = 'none';
+}
+
+// ── 오디오 로드 ───────────────────────────────────
+// song.json에서 실제 쓰이는 사운드 인덱스만 골라서 로드
+async function loadAllSounds(ctx) {
+    soundBuffers = {};
+
+    // 블록별로 실제 사용되는 사운드 인덱스 추출
+    const needed = {};
+    for (let id = 0; id < 16; id++) {
+        needed[id] = new Set();
+        (songData[id] ?? []).forEach(bar =>
+            bar.forEach(ev => needed[id].add(ev[1]))
+        );
+    }
+
+    for (let id = 0; id < 16; id++) {
+        const folder = WavFolders[id];
+        if (!folder || needed[id].size === 0) continue;
+        const list = Sounds[id] ?? [];
+        soundBuffers[id] = [];
+
+        document.getElementById('status').textContent =
+            `LOADING... ${id + 1}/16  ${BlockNames[id]} (${needed[id].size}개)`;
+
+        await Promise.all([...needed[id]].map(async (i) => {
+            const name = list[i];
+            if (!name) return;
+            try {
+                const res = await fetch(`./wav_used/${folder}/${name}.wav`);
+                if (!res.ok) return;
+                const buf = await res.arrayBuffer();
+                soundBuffers[id][i] = await ctx.decodeAudioData(buf);
+            } catch(e) {}
+        }));
+    }
+}
+
+// ── 스프라이트 이벤트 빌드 ────────────────────────
+function buildSpriteEvents() {
+    const events = [];
+    for (let id = 0; id < 16; id++) {
+        const configs = TileConfigs[id];
+        const durations = TileDurations[id];
+        const song = songData[id];
+        if (!song || !configs) continue;
+        song.forEach((bar, barIdx) => {
+            bar.forEach(ev => {
+                const [bit, soundIdx, dur] = ev;
+                const cfg = configs[soundIdx];
+                if (!cfg) return;
+                const [L, R] = cfg;
+                const tileIdx = (L > 0 ? L : R) - 1;
+                if (tileIdx < 0) return;
+                const timeMs = (bit + barIdx * 192) * Bit_Milliseconds;
+                const durBits = dur ?? (durations?.[soundIdx] ?? 6);
+                const endMs = timeMs + durBits * Bit_Milliseconds;
+                events.push({ timeMs, endMs, id, tileIdx });
+            });
+        });
+    }
+    return events.sort((a, b) => a.timeMs - b.timeMs);
+}
+
+// ── 재생 ─────────────────────────────────────────
+async function playSong() {
+    if (isPlaying) return;
+
+    const ctx = new AudioContext();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.5;
+    gain.connect(ctx.destination);
+
+    await loadAllSounds(ctx);
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    document.getElementById('status').textContent = 'PLAYING';
+    isPlaying = true;
+    playSong._ctx = ctx;
+
+    const startTime = ctx.currentTime + 0.1; // 약간 여유
+    const LOOKAHEAD = 0.2; // 0.2초 앞만 스케줄
+
+    // 모든 오디오 이벤트를 시간순으로 정렬해둠
+    const audioEvents = [];
+    for (let id = 0; id < 16; id++) {
+        const song = songData[id];
+        if (!song) continue;
+        song.forEach((bar, barIdx) => {
+            bar.forEach(ev => {
+                const [bit, soundIdx, dur] = ev;
+                const buf = soundBuffers[id]?.[soundIdx];
+                if (!buf) return;
+                const t = startTime + (bit + barIdx * 192) * Bit_Seconds;
+                audioEvents.push({ t, buf, dur, gain });
+            });
+        });
+    }
+    audioEvents.sort((a, b) => a.t - b.t);
+    let audioPtr = 0;
+
+    // 스프라이트 이벤트
+    const spriteEvents = buildSpriteEvents();
+    let spritePtr = 0;
+    let maxMs = 0;
+    spriteEvents.forEach(e => { if (e.endMs > maxMs) maxMs = e.endMs; });
+    const songDuration = maxMs;
+
+    function loop() {
+        if (!isPlaying) return;
+        const now = ctx.currentTime;
+        const elapsedMs = (now - startTime) * 1000;
+
+        // 타임라인
+        document.getElementById('tl-bar').style.width =
+            Math.min(elapsedMs / songDuration * 100, 100) + '%';
+
+        // lookahead: now+LOOKAHEAD 까지만 스케줄
+        while (audioPtr < audioEvents.length && audioEvents[audioPtr].t < now + LOOKAHEAD) {
+            const ev = audioEvents[audioPtr++];
+            if (ev.t < now - 0.05) { continue; } // 너무 늦은 건 스킵
+            const src = ctx.createBufferSource();
+            src.buffer = ev.buf;
+            src.connect(ev.gain);
+            if (ev.dur) src.start(ev.t, 0, ev.dur * Bit_Seconds);
+            else src.start(ev.t);
+            src.onended = () => src.disconnect();
+        }
+
+        // 스프라이트
+        while (spritePtr < spriteEvents.length && spriteEvents[spritePtr].timeMs <= elapsedMs) {
+            const ev = spriteEvents[spritePtr++];
+            activateBlock(ev.id, ev.tileIdx);
+            activeBlocks[ev.id] = ev;
+            const t = setTimeout(() => {
+                if (activeBlocks[ev.id] === ev) {
+                    deactivateBlock(ev.id);
+                    activeBlocks[ev.id] = null;
+                }
+            }, ev.endMs - elapsedMs);
+            activeTimers.push(t);
+        }
+
+        if (elapsedMs >= songDuration) { stopSong(); return; }
+        animFrame = requestAnimationFrame(loop);
+    }
+    animFrame = requestAnimationFrame(loop);
+}
+
+function stopSong(ctx) {
+    isPlaying = false;
+    if (animFrame) cancelAnimationFrame(animFrame);
+    activeTimers.forEach(clearTimeout);
+    activeTimers = [];
+    for (let id = 0; id < 16; id++) deactivateBlock(id);
+    document.getElementById('tl-bar').style.width = '0%';
+    document.getElementById('status').textContent = 'CLICK TO PLAY';
+    const c = ctx ?? playSong._ctx;
+    if (c) {
+        c.close().catch(() => {});
+        playSong._ctx = null;
+    }
+}
+
+// ── 업로드 ───────────────────────────────────────
+document.getElementById('upload-input').addEventListener('change', e => {
+    [...e.target.files].forEach(file => {
+        const match = file.name.match(/^(\d+)_(\d+)/);
+        if (match) spriteImages[`${match[1]}_${match[2]}`] = URL.createObjectURL(file);
+    });
+    document.getElementById('upload-hint').textContent =
+        `${Object.keys(spriteImages).length}개 스프라이트 로드됨 ✓`;
+});
+
+// 클릭 이벤트 - 업로드 버튼이나 label 클릭은 제외
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#upload-section')) return;
+    if (!isPlaying) playSong();
+    else stopSong();
+});
+
+// ── 초기화 ───────────────────────────────────────
+async function init() {
+    buildGrid();
+    await Promise.all(Array.from({length: 16}, async (_, i) => {
+        try {
+            const res = await fetch(`./song/${i}.json`);
+            songData[i] = await res.json();
+        } catch(e) { songData[i] = []; }
+    }));
+    document.getElementById('status').textContent = 'CLICK TO PLAY';
+}
+
+init();
+</script>
+</body>
+</html>
