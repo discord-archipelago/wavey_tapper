@@ -10,13 +10,16 @@
   <!-- 항상 보이는 fixed 버튼들 -->
   <button id="ui-toggle">◈</button>
 
+  <!-- 메인 타이틀 (그리드 위, UI 숨겨도 유지) -->
+  <h1 id="main-title">Wavetapper(with custom sprites) -by heewon0010</h1>
+
   <!-- 블록 그리드 / 자유드래그 스테이지 (ui-wrapper 바깥 → UI 숨겨도 유지) -->
   <div id="grid"></div>
   <div id="free-stage"></div>
 
-  <!-- UI 래퍼: 타이틀, 타임라인, 상태, 컨트롤만 -->
+  <!-- UI 래퍼: 팁, 타임라인, 상태, 컨트롤 -->
   <div id="ui-wrapper">
-    <h1>Wavetapper</h1>
+    <div id="tip-display">💡 <span id="tip-text"></span></div>
     <div id="timeline"><div id="tl-bar"></div></div>
     <div id="status">LOADING...</div>
     <div id="controls">
@@ -35,6 +38,7 @@
       <div class="setting-row">
         <div class="setting-label">Theme</div>
         <button class="setting-toggle" id="theme-toggle">🌙 Dark Mode</button>
+        <button class="setting-toggle" id="custom-mode-toggle">✏ Custom Mode OFF</button>
       </div>
       <div class="setting-row">
         <div class="setting-label">Background Color</div>
@@ -47,8 +51,16 @@
         <button class="setting-toggle" id="bg-image-clear">배경 이미지 제거</button>
       </div>
       <div class="setting-row">
+        <div class="setting-label">Grid 세로 위치  <span id="grid-offset-val">0px</span></div>
+        <input type="range" id="grid-offset" min="-400" max="400" value="0" step="4">
+      </div>
+      <div class="setting-row">
         <div class="setting-label">Block Size  <span id="block-size-val">120px</span></div>
         <input type="range" id="block-size" min="60" max="240" value="120" step="4">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Border Radius  <span id="block-radius-val">0px</span></div>
+        <input type="range" id="block-radius" min="0" max="60" value="0" step="2">
       </div>
       <div class="setting-row">
         <div class="setting-label">Sprite 표시 시간  <span id="sprite-dur-val">1.0×</span></div>
@@ -62,6 +74,7 @@
       <div class="setting-row">
         <div class="setting-label">Style</div>
         <button class="setting-toggle" id="no-style-toggle">스타일 없애기 OFF</button>
+        <button class="setting-toggle" id="tile-label-toggle">타일 레이블 ON</button>
       </div>
     </div>
   </div>

@@ -19,12 +19,29 @@ export const TILE_FOLDERS = [
   'Drums','Chord','FA Front','FA Back',
   'WWDTM High','WWDTM Low','SF Roll','SF Tap',
   'PM','Arp','Noise','DTMF',
-  'Bass','Spreader','Radiolab',''
+  'Bass','Spreader','Radiolab','Text'
 ];
 
-export const BLOCK_COLORS = [
-  '#FF4A45','#FC903A','#F3CE37','#DEF030',
-  '#80E62E','#35E13E','#2CD88E','#3BE6CE',
-  '#34CDF8','#3485FF','#3B46FF','#8951FB',
-  '#DE57F6','#FF57D6','#FF5484','#A8A8A8'
+export const TILE_OFFSETS = [
+  0, 5, 10, 14, 17, 20, 23, 26,
+  29, 39, 44, 85, 99, 104, 113, 135
 ];
+
+// 강조색 (밝은 무늬색)
+export const BLOCK_COLORS = [
+  '#FF5043','#FF8E38','#F3D32B','#D5EA24',
+  '#8DE741','#30E640','#32EB98','#2FE9CE',
+  '#36CBF9','#3488FF','#4347FF','#8751FE',
+  '#DD50F9','#FF58D6','#FF5B89','#AAAAAA'
+];
+
+// 어두운 배경색
+export const BLOCK_BG_COLORS = [
+  '#58140D','#52290C','#4F3F0A','#565F0D',
+  '#26470C','#08440B','#02481C','#074742',
+  '#083D4F','#0B2750','#0D1152','#291351',
+  '#441652','#511742','#531427','#343434'
+];
+
+// BLOCK_FILTERS는 더 이상 사용하지 않음 (SVG filter 방식으로 교체)
+export const BLOCK_FILTERS = Array(16).fill('');

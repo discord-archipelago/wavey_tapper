@@ -1,8 +1,8 @@
 // main.js
 import './style.css';
-import { BLOCK_NAMES, BLOCK_COLORS, BIT_SECONDS, TILE_FOLDERS } from './constants.js';
+import { BLOCK_NAMES, BLOCK_COLORS, BLOCK_BG_COLORS, BIT_SECONDS } from './constants.js';
 import { loadSounds, buildAudioEvents, closeAudio } from './audio.js';
-import { spriteImages, buildSpriteEvents, activateBlock, deactivateBlock } from './sprites.js';
+import { spriteImages, buildSpriteEvents, activateBlock, deactivateBlock, setCustomMode } from './sprites.js';
 
 // ── 전역 상태 ─────────────────────────────────────
 let songData = {};
@@ -14,7 +14,8 @@ let globalBlockSize = 120;  // 전체 크기
 const freePositions = {};   // id → {x, y}
 let freeDragMode = false;
 let noStyleMode = false;
-let customMode = false; // 커스텀 모드
+let tileLabelVisible = true;
+let customMode = false;
 let spriteDurationMult = 1.0;
 
 // 오디오 상태
@@ -64,29 +65,29 @@ function applyBlockSize(el, id) {
   el.style.aspectRatio = 'unset';
 }
 
-// ── 기본 타일 이미지 로드 ─────────────────────────
-// img/tile/{폴더}/tile_000.png ~ 형식
-function loadDefaultTileImages() {
-  for (let id = 0; id < 16; id++) {
-    const folder = TILE_FOLDERS[id];
-    if (!folder) continue;
-    const tileCount = window.Tiles?.[id]?.length ?? 0;
-    for (let t = 0; t < tileCount; t++) {
-      const key = `${id}_${t}`;
-      if (!spriteImages[key]) { // 커스텀 없을 때만
-        const num = String(t).padStart(3, '0');
-        spriteImages[key] = `/img/tile/${folder}/tile_${num}.png`;
+// ── 배경 글자(번호/이름) 표시 갱신 ──────────────────
+// 기본모드: 배경 글자 숨김 / 커스텀모드: 배경 글자 표시 (재생 중인 블록은 건드리지 않음)
+function refreshIdlePlaceholders() {
+  document.querySelectorAll('.block').forEach(el => {
+    if (el.classList.contains('active')) return;
+    const id = parseInt(el.dataset.id);
+    const placeholder = el.querySelector('.block-placeholder');
+    const img = el.querySelector('.block-sprite');
+    const defaultKey = `${id}_default`;
+    if (spriteImages[defaultKey]) {
+      img.src = spriteImages[defaultKey];
+      img.style.display = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      if (customMode) {
+        el.querySelector('.block-num').textContent = id;
+        placeholder.style.display = 'flex';
+      } else {
+        placeholder.style.display = 'none';
       }
     }
-  }
-}
-
-// ── 커스텀 모드 토글 ──────────────────────────────
-function toggleCustomMode(on) {
-  customMode = on;
-  document.body.classList.toggle('custom-mode', on);
-  // 커스텀 OFF → 기본 타일 이미지 복원 (유저가 올린 게 없는 것만)
-  if (!on) loadDefaultTileImages();
+  });
 }
 
 // ── 그리드 생성 ──────────────────────────────────
@@ -102,6 +103,8 @@ function buildGrid() {
     el.className = 'block';
     el.dataset.id = id;
     el.style.setProperty('--c', BLOCK_COLORS[id]);
+    // 기본 모드: 원본 배경색, 커스텀 모드: CSS 기본색
+    el.style.background = customMode ? '' : BLOCK_BG_COLORS[id];
     applyBlockSize(el, id);
     if (mutedBlocks.has(id)) el.classList.add('muted');
     if (noStyleMode) el.classList.add('no-style');
@@ -127,6 +130,38 @@ function buildGrid() {
     });
     grid.appendChild(el);
   });
+  refreshIdlePlaceholders();
+}
+
+// ── 기본 이미지 설정 ─────────────────────────────
+// 기본 이미지 없음 (기본모드에서는 placeholder 표시)
+function applyDefaultImages() {}
+
+function removeDefaultImages() {
+  for (let id = 0; id < 16; id++) {
+    const key = `${id}_default`;
+    if (spriteImages[key] === '/img/default.png') {
+      delete spriteImages[key];
+    }
+  }
+}
+
+// ── 커스텀 모드 토글 ──────────────────────────────
+function toggleCustomMode(on) {
+  customMode = on;
+  setCustomMode(on);
+  if (on) {
+    removeDefaultImages();
+  } else {
+    applyDefaultImages();
+  }
+  // 배경색 업데이트
+  document.querySelectorAll('.block').forEach(el => {
+    const id = parseInt(el.dataset.id);
+    el.style.background = on ? '' : BLOCK_BG_COLORS[id];
+  });
+  // 배경 글자(번호/이름) 표시 갱신
+  refreshIdlePlaceholders();
 }
 
 // ── 전체 블록 크기 변경 ───────────────────────────
@@ -262,29 +297,17 @@ function openSpriteModal(id) {
   nameEl.textContent = `${BLOCK_NAMES[id]}  (Block ${id})`;
   nameEl.style.color = BLOCK_COLORS[id];
 
-  // 개별 크기 슬라이더
+  // 개별 크기 슬라이더 — _currentModalId로 현재 열린 블록 추적
+  openSpriteModal._id = id;
   const curSize = getBlockSize(id);
-  document.getElementById('block-individual-size').value = curSize;
-  document.getElementById('block-individual-size-val').textContent = curSize + 'px';
-  document.getElementById('block-individual-size').oninput = e => {
-    const px = parseInt(e.target.value);
-    blockSizes[id] = px;
-    document.getElementById('block-individual-size-val').textContent = px + 'px';
-    document.querySelectorAll(`.block[data-id="${id}"]`).forEach(el => {
-      el.style.width = px + 'px';
-      el.style.height = px + 'px';
-    });
-  };
-  document.getElementById('block-individual-size-reset').onclick = () => {
-    delete blockSizes[id];
-    const px = globalBlockSize;
-    document.getElementById('block-individual-size').value = px;
-    document.getElementById('block-individual-size-val').textContent = px + 'px';
-    document.querySelectorAll(`.block[data-id="${id}"]`).forEach(el => {
-      el.style.width = px + 'px';
-      el.style.height = px + 'px';
-    });
-  };
+  const indivSlider = document.getElementById('block-individual-size');
+  const indivVal = document.getElementById('block-individual-size-val');
+  const indivReset = document.getElementById('block-individual-size-reset');
+  indivSlider.value = curSize;
+  indivVal.textContent = curSize + 'px';
+  // data-modal-id로 현재 대상 블록 id를 추적 (리스너는 최초 1회만 등록)
+  indivSlider.dataset.modalId = id;
+  indivReset.dataset.modalId = id;
 
   const tileGrid = document.getElementById('sprite-tile-grid');
   tileGrid.innerHTML = '';
@@ -428,11 +451,25 @@ function bindEvents() {
       document.getElementById('settings-modal').classList.remove('open');
   });
 
+  // 그리드 세로 위치
+  document.getElementById('grid-offset').addEventListener('input', e => {
+    const px = parseInt(e.target.value);
+    document.getElementById('grid-offset-val').textContent = px + 'px';
+    document.getElementById('grid').style.marginTop = px + 'px';
+  });
+
   // 전체 블록 크기
   document.getElementById('block-size').addEventListener('input', e => {
     const px = parseInt(e.target.value);
     document.getElementById('block-size-val').textContent = px + 'px';
     setGlobalBlockSize(px);
+  });
+
+  // border-radius
+  document.getElementById('block-radius').addEventListener('input', e => {
+    const px = e.target.value + 'px';
+    document.documentElement.style.setProperty('--block-radius', px);
+    document.getElementById('block-radius-val').textContent = px;
   });
 
   // 스프라이트 표시 시간
@@ -445,7 +482,20 @@ function bindEvents() {
   document.getElementById('theme-toggle').addEventListener('click', () => {
     const isLight = document.body.classList.toggle('light');
     const btn = document.getElementById('theme-toggle');
-    btn.textContent = isLight ? '☀ Light Mode' : '🌙 Dark Mode';
+    btn.textContent = isLight ? '화이트 모드' : '다크 모드';
+  });
+
+  // 커스텀 모드 토글
+  document.getElementById('custom-mode-toggle').addEventListener('click', () => {
+    customMode = !customMode;
+    toggleCustomMode(customMode);
+    const btn = document.getElementById('custom-mode-toggle');
+    btn.textContent = customMode ? '커스텀 모드 ON' : '커스텀 모드 OFF';
+    btn.classList.toggle('active', customMode);
+    // 커스텀 ON → 다크모드, OFF → 라이트모드
+    const isLight = !customMode;
+    document.body.classList.toggle('light', isLight);
+    document.getElementById('theme-toggle').textContent = isLight ? '화이트 모드' : '다크 모드';
   });
 
   // 배경색
@@ -503,6 +553,15 @@ function bindEvents() {
     document.querySelectorAll('.block').forEach(el => el.classList.toggle('no-style', noStyleMode));
   });
 
+  // 타일 레이블 토글
+  document.getElementById('tile-label-toggle').addEventListener('click', () => {
+    tileLabelVisible = !tileLabelVisible;
+    const btn = document.getElementById('tile-label-toggle');
+    btn.textContent = tileLabelVisible ? '타일 레이블 ON' : '타일 레이블 OFF';
+    btn.classList.toggle('active', tileLabelVisible);
+    document.documentElement.style.setProperty('--tile-label-display', tileLabelVisible ? 'block' : 'none');
+  });
+
   // 스프라이트 모달 닫기
   document.getElementById('sprite-modal-close').addEventListener('click', () => {
     document.getElementById('sprite-modal').classList.remove('open');
@@ -511,6 +570,53 @@ function bindEvents() {
     if (e.target === document.getElementById('sprite-modal'))
       document.getElementById('sprite-modal').classList.remove('open');
   });
+
+  // 개별 블록 크기 슬라이더 (리스너 1회 등록, data-modal-id로 대상 추적)
+  document.getElementById('block-individual-size').addEventListener('input', e => {
+    const id = parseInt(e.target.dataset.modalId);
+    const px = parseInt(e.target.value);
+    blockSizes[id] = px;
+    document.getElementById('block-individual-size-val').textContent = px + 'px';
+    document.querySelectorAll(`.block[data-id="${id}"]`).forEach(el => {
+      el.style.width = px + 'px';
+      el.style.height = px + 'px';
+    });
+  });
+  document.getElementById('block-individual-size-reset').addEventListener('click', () => {
+    const id = parseInt(document.getElementById('block-individual-size').dataset.modalId);
+    delete blockSizes[id];
+    const px = globalBlockSize;
+    document.getElementById('block-individual-size').value = px;
+    document.getElementById('block-individual-size-val').textContent = px + 'px';
+    document.querySelectorAll(`.block[data-id="${id}"]`).forEach(el => {
+      el.style.width = px + 'px';
+      el.style.height = px + 'px';
+    });
+  });
+}
+
+// ── 팁 시스템 ─────────────────────────────────────
+const TIPS = [
+  '블록을 클릭하면 스프라이트를 설정할 수 있어요',
+  '블록을 우클릭하면 해당 블록을 음소거할 수 있어요',
+  '설정에서 블록 크기와 모양을 바꿀 수 있어요',
+  '자유 드래그 모드에서 블록을 원하는 위치로 옮길 수 있어요',
+  '커스텀 모드에서 각 블록에 나만의 이미지를 넣을 수 있어요',
+  '팁 추가하고 싶으면 main.js의 TIPS 배열에 넣으세요!',
+];
+let _tipIdx = 0;
+function startTips() {
+  const el = document.getElementById('tip-text');
+  function show() {
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = TIPS[_tipIdx % TIPS.length];
+      _tipIdx++;
+      el.style.opacity = '1';
+    }, 400);
+  }
+  show();
+  setInterval(show, 6000);
 }
 
 // ── 초기화 ───────────────────────────────────────
@@ -518,6 +624,11 @@ async function init() {
   await loadGameData();
   buildGrid();
   bindEvents();
+  // 기본: 화이트모드 + 기본 이미지
+  document.body.classList.add('light');
+  document.getElementById('theme-toggle').textContent = '화이트 모드';
+  applyDefaultImages();
+  toggleCustomMode(false); // 기본 이미지 블록에 표시
   await Promise.all(Array.from({length: 16}, async (_, i) => {
     try {
       const res = await fetch(`/song/${i}.json`);

@@ -1,9 +1,54 @@
 // sprites.js - 스프라이트 이벤트 빌드 및 블록 UI
 
-import { BIT_MS, BLOCK_COLORS, BLOCK_NAMES } from './constants.js';
+import { BIT_MS, BLOCK_COLORS, TILE_FOLDERS, TILE_OFFSETS } from './constants.js';
 
 // 전역 스프라이트 이미지 저장소
 export const spriteImages = {}; // "id_tileIdx" → url, "id_default" → url
+
+// 커스텀 모드 여부 (main.js에서 setCustomMode로 갱신)
+export let isCustomMode = false;
+export function setCustomMode(v) { isCustomMode = v; }
+
+// ── SVG filter 생성 ──────────────────────────────
+// 검정 이미지의 픽셀을 targetColor로 교체하는 SVG filter를 DOM에 삽입
+// 원리: 검정(0,0,0) → targetColor, 흰색(1,1,1) → targetColor (알파는 원본 유지)
+function hexToRgb01(hex) {
+  const h = hex.replace('#', '');
+  return [
+    parseInt(h.slice(0,2),16)/255,
+    parseInt(h.slice(2,4),16)/255,
+    parseInt(h.slice(4,6),16)/255,
+  ];
+}
+
+function ensureSvgFilter(id, color) {
+  const filterId = `block-color-filter-${id}`;
+  if (document.getElementById(filterId)) return `url(#${filterId})`;
+
+  const [r, g, b] = hexToRgb01(color);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+  svg.innerHTML = `
+    <defs>
+      <filter id="${filterId}" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" values="
+          0 0 0 0 ${r}
+          0 0 0 0 ${g}
+          0 0 0 0 ${b}
+          0 0 0 1 0"/>
+      </filter>
+    </defs>`;
+  document.body.appendChild(svg);
+  return `url(#${filterId})`;
+}
+
+// 타일 이미지 경로 (원본 흑백)
+export function getTilePath(id, tileIdx) {
+  const folder = TILE_FOLDERS[id];
+  if (!folder) return null;
+  const num = String(TILE_OFFSETS[id] + tileIdx).padStart(3, '0');
+  return `/img/tile/${folder}/tile_${num}.png`;
+}
 
 export function buildSpriteEvents(songData, TileConfigs, TileDurations) {
   const events = [];
@@ -36,17 +81,31 @@ export function activateBlock(id, tileIdx, mutedBlocks) {
   if (!el) return;
   el.classList.add('active');
   el.querySelector('.block-tile').textContent = `T${tileIdx}`;
+
   const img = el.querySelector('.block-sprite');
-  const key = `${id}_${tileIdx}`;
-  if (spriteImages[key]) {
-    img.src = spriteImages[key];
+  const customKey = `${id}_${tileIdx}`;
+
+  if (spriteImages[customKey]) {
+    // 커스텀 이미지 있으면 필터 없이 그대로
+    img.src = spriteImages[customKey];
+    img.style.filter = '';
     img.style.display = 'block';
-    el.querySelector('.block-placeholder').style.display = 'none';
+  } else if (!isCustomMode) {
+    // 기본모드: 원본 검정 이미지 → 밝은 색으로 변환 (SVG feColorMatrix)
+    const tilePath = getTilePath(id, tileIdx);
+    if (tilePath) {
+      img.src = tilePath;
+      img.style.filter = ensureSvgFilter(id, BLOCK_COLORS[id]);
+      img.style.display = 'block';
+    }
   } else {
+    // 커스텀모드: 커스텀 이미지가 없으면 기본모드 타일 이미지를 쓰지 않음
     img.style.display = 'none';
-    el.querySelector('.block-placeholder').style.display = 'flex';
-    el.querySelector('.block-num').textContent = tileIdx;
+    img.style.filter = '';
   }
+
+  el.querySelector('.block-placeholder').style.display = 'none';
+
   const flash = el.querySelector('.block-flash');
   flash.style.opacity = '0.12';
   setTimeout(() => flash.style.opacity = '0', 80);
@@ -57,15 +116,26 @@ export function deactivateBlock(id) {
   if (!el) return;
   el.classList.remove('active');
   el.querySelector('.block-tile').textContent = '';
-  const defaultKey = `${id}_default`;
+
   const img = el.querySelector('.block-sprite');
+  const defaultKey = `${id}_default`;
+
   if (spriteImages[defaultKey]) {
+    // 커스텀 기본 이미지
     img.src = spriteImages[defaultKey];
+    img.style.filter = '';
     img.style.display = 'block';
     el.querySelector('.block-placeholder').style.display = 'none';
   } else {
-    el.querySelector('.block-num').textContent = id;
-    el.querySelector('.block-placeholder').style.display = 'flex';
     img.style.display = 'none';
+    img.style.filter = '';
+    if (isCustomMode) {
+      // 커스텀모드: 배경 글자(번호/이름) 표시
+      el.querySelector('.block-num').textContent = id;
+      el.querySelector('.block-placeholder').style.display = 'flex';
+    } else {
+      // 기본모드: 배경 글자 숨김
+      el.querySelector('.block-placeholder').style.display = 'none';
+    }
   }
 }

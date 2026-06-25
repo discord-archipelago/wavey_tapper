@@ -46,7 +46,7 @@ h1 { color: #333; font-size: 11px; letter-spacing: 6px; text-transform: uppercas
 .block {
   background: #111118;
   border: 1px solid #1e1e2e;
-  border-radius: 6px;
+  border-radius: var(--block-radius, 0px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,7 +61,7 @@ h1 { color: #333; font-size: 11px; letter-spacing: 6px; text-transform: uppercas
 .block.dragging { opacity: 0.5; cursor: grabbing; z-index: 100; }
 .block.drag-over { border-color: var(--c) !important; opacity: 0.7; }
 
-.block-sprite { width: 70%; height: 70%; object-fit: contain; image-rendering: pixelated; display: none; }
+.block-sprite { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; display: none; }
 .block-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .block-num { font-size: 22px; font-weight: bold; color: #222; transition: color 0.08s; }
 .block.active .block-num { color: var(--c); }
@@ -214,7 +214,7 @@ body.light {
   background: #f0f0f5;
   color: #111;
 }
-body.light h1 { color: #aaa; }
+body.light h1 { color: #aaa; font-size: 10px; letter-spacing: 4px; }
 body.light #status { color: #999; }
 body.light .block {
   background: #e8e8f0;
