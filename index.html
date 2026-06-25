@@ -1,98 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta content="./img/display.svg" property="og:image" />
-    <meta content="Frums - Wavetapper" property="og:title" />
-    <meta content="An interactive web version of the video for Wavetapper by Frums." property="og:description" />
-    <meta content="An interactive web version of the video for Wavetapper by Frums." name="description" />
-    <link rel="icon" type="image/x-icon" href="/img/favicon/15.svg" />
-    <title>Wavetapper</title>
-
-    <link rel="stylesheet" href="css/Mulish.css">
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wavetapper</title>
+  <link rel="stylesheet" href="/src/style.css">
 </head>
+<body>
+  <h1>Wavetapper</h1>
+  <div id="grid"></div>
+  <div id="timeline"><div id="tl-bar"></div></div>
+  <div id="status">LOADING...</div>
 
-<body onload="load()">
-    <header>
-        <section id="cube-section">
-            <cube id="cube">
-                <face class="f1"></face>
-                <face class="f2"></face>
-                <face class="f3"><img src="img/maincube2.png"></face>
-                <face class="f4"><img src="img/maincube2.png"></face>
-                <face class="f5"><img src="img/maincube1.png"></face>
-                <face class="f6"><img src="img/maincube1.png"></face>
-            </cube>
-        </section>
-        <section id="info">
-            <h1>Frums - Wavetapper</h1>
-            <h2>Web Interactive MV</h2>
-            <p>Based on <a href="https://www.youtube.com/watch?v=-lRPEny5jug">Frums - Wavetapper [BGA]</a></p>
-            <p>In order to use this site, please enlarge this window and <b>allow Popups and Redirects</b>.</p>
-        </section>
-    </header>
-    <main>
-        <p>This site recreates the video of Frums - Wavetapper using various popups for each cube. </p>
-        <section>
-            <h3>Popup Info</h3>
-            <ul>
-                <li>Left click + Drag: Rotate Cube</li>
-                <li>Middle click: Highlight Cube (in Highlight Mode)</li>
-                <li>Right click: Mute Cube</li>
-            </ul>
-        </section>
-        <section id="control-panel">
-            <h2>Control Panel</h2>
-            <div>
-                <button id="calibrate" onclick="DeviceInfo.calibrate()">Calibrate</button>
-                <label for="calibrate">Gets measurements about popups and the screen. Please re-calibrate if the screen
-                    resolution changes.</label>
-            </div>
-            <div>
-                <div class="button">
-                    <label for="highlightmode">Highlight Mode: </label>
-                    <input type="checkbox" name="" id="highlightmode">
-                </div>
-                <label for="highlightmode">Enables an alternative mode that lets you highlight various blocks to enlarge
-                    them.</label>
-            </div>
-            <div>
-                <button id="load" onclick="Blocks.load()" disabled>Load</button>
-                <label for="load">Load all popups. Due to how the audio works, you will need to click on each popup to
-                    lead them individually.</label>
-            </div>
-            <div>
-                <div class="button">
-                    <label for="autoplay">Autoplay: </label>
-                    <input type="checkbox" id="autoplay">
-                </div>
-                <label for="autoplay">The song automatically plays once all blocks are loaded.</label>
-            </div>
-            <div>
-                <button id="play" onclick="Blocks.play()" disabled>Play</button>
-                <label for="play">Manually play the song.</label>
-            </div>
-            <div>
-                <button id="terminate" onclick="Blocks.terminate()" disabled>Terminate</button>
-                <label for="terminate">Close all popups.</label>
-            </div>
-            <div>
-                <button id="tick" onclick="Blocks.tick()" disabled>Metronome Test</button>
-                <label for="tick">Test to see if the popups are synchronized.</label>
-            </div>
-            <div>
-                <button id="spin" onclick="Blocks.spin()" disabled>Spin</button>
-                <label for="spin">Self-explanatory.</label>
-            </div>
-        </section>
-    </main>
+  <div id="controls">
+    <button class="ctrl-btn danger" id="btn-reset">↺ Reset</button>
+    <button class="ctrl-btn primary" id="btn-play">▶ Play</button>
+    <button class="ctrl-btn" id="btn-stop" disabled>■ Stop</button>
+  </div>
 
+  <button id="settings-btn" title="설정">⚙</button>
+  <div id="settings-panel">
+    <div class="setting-row">
+      <div class="setting-label">Background Color</div>
+      <input type="color" id="bg-color" value="#0a0a0f">
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Background Image</div>
+      <label class="setting-file-label" for="bg-image-input">+ 이미지 업로드</label>
+      <input type="file" id="bg-image-input" accept="image/*" style="display:none">
+      <button class="setting-toggle" id="bg-image-clear">배경 이미지 제거</button>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Block Position</div>
+      <button class="setting-toggle" id="drag-toggle">드래그 모드 OFF</button>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Style</div>
+      <button class="setting-toggle" id="no-style-toggle">스타일 없애기 OFF</button>
+    </div>
+  </div>
 
-    <script src="js/prototype.js"></script>
-    <script src="js/script.js"></script>
+  <div id="sprite-modal">
+    <div id="sprite-modal-inner">
+      <div id="sprite-modal-title">
+        <span id="sprite-modal-block-name">BLOCK 0</span>
+        <button id="sprite-modal-close">×</button>
+      </div>
+      <div id="sprite-tile-grid"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
 </body>
-
 </html>
