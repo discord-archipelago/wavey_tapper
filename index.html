@@ -7,40 +7,59 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
-  <h1>Wavetapper</h1>
+  <!-- 항상 보이는 fixed 버튼들 -->
+  <button id="ui-toggle">◈</button>
 
-  <!-- 자유 드래그 모드일 때 블록들이 여기 들어감 -->
+  <!-- 블록 그리드 / 자유드래그 스테이지 (ui-wrapper 바깥 → UI 숨겨도 유지) -->
+  <div id="grid"></div>
   <div id="free-stage"></div>
 
-  <div id="grid"></div>
-  <div id="timeline"><div id="tl-bar"></div></div>
-  <div id="status">LOADING...</div>
-
-  <div id="controls">
-    <button class="ctrl-btn primary" id="btn-play">▶ Play</button>
-    <button class="ctrl-btn" id="btn-stop" disabled>■ Stop</button>
-    <button class="ctrl-btn" id="settings-btn">⚙ Settings</button>
+  <!-- UI 래퍼: 타이틀, 타임라인, 상태, 컨트롤만 -->
+  <div id="ui-wrapper">
+    <h1>Wavetapper</h1>
+    <div id="timeline"><div id="tl-bar"></div></div>
+    <div id="status">LOADING...</div>
+    <div id="controls">
+      <button class="ctrl-btn primary" id="btn-play">▶ Play</button>
+      <button class="ctrl-btn" id="btn-stop" disabled>■ Stop</button>
+      <button class="ctrl-btn" id="settings-btn">⚙ Settings</button>
+    </div>
   </div>
 
-  <div id="settings-panel">
-    <div class="setting-row">
-      <div class="setting-label">Background Color</div>
-      <input type="color" id="bg-color" value="#0a0a0f">
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">Background Image</div>
-      <label class="setting-file-label" for="bg-image-input">+ 이미지 업로드</label>
-      <input type="file" id="bg-image-input" accept="image/*" style="display:none">
-      <button class="setting-toggle" id="bg-image-clear">배경 이미지 제거</button>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">Block Layout</div>
-      <button class="setting-toggle" id="drag-toggle">스왑 드래그 OFF</button>
-      <button class="setting-toggle" id="free-drag-toggle">자유 드래그 OFF</button>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">Style</div>
-      <button class="setting-toggle" id="no-style-toggle">스타일 없애기 OFF</button>
+  <div id="settings-modal">
+    <div id="settings-modal-inner">
+      <div id="settings-modal-title">
+        <span>Settings</span>
+        <button id="settings-modal-close">×</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Background Color</div>
+        <input type="color" id="bg-color" value="#0a0a0f">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Background Image</div>
+        <label class="setting-file-label" for="bg-image-input">+ 이미지 업로드</label>
+        <input type="file" id="bg-image-input" accept="image/*" style="display:none">
+        <button class="setting-toggle" id="bg-image-clear">배경 이미지 제거</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Block Size  <span id="block-size-val">120px</span></div>
+        <input type="range" id="block-size" min="60" max="240" value="120" step="4">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Sprite 표시 시간  <span id="sprite-dur-val">1.0×</span></div>
+        <input type="range" id="sprite-dur" min="1" max="20" value="1" step="0.5">
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Block Layout</div>
+        <button class="setting-toggle" id="drag-toggle">스왑 드래그 OFF</button>
+        <button class="setting-toggle" id="free-drag-toggle">자유 드래그 OFF</button>
+        <button class="setting-toggle" id="free-pos-reset">위치 초기화</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">Style</div>
+        <button class="setting-toggle" id="no-style-toggle">스타일 없애기 OFF</button>
+      </div>
     </div>
   </div>
 
@@ -49,6 +68,13 @@
       <div id="sprite-modal-title">
         <span id="sprite-modal-block-name">BLOCK 0</span>
         <button id="sprite-modal-close">×</button>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">블럭 크기  <span id="block-individual-size-val">120px</span></div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="range" id="block-individual-size" min="40" max="400" value="120" step="4" style="flex:1">
+          <button class="setting-toggle" id="block-individual-size-reset" style="white-space:nowrap; padding:4px 8px;">초기화</button>
+        </div>
       </div>
       <div id="sprite-tile-grid"></div>
     </div>

@@ -3,7 +3,7 @@
 import { BIT_MS, BLOCK_COLORS, BLOCK_NAMES } from './constants.js';
 
 // 전역 스프라이트 이미지 저장소
-export const spriteImages = {}; // "id_tileIdx" → url
+export const spriteImages = {}; // "id_tileIdx" → url, "id_default" → url
 
 export function buildSpriteEvents(songData, TileConfigs, TileDurations) {
   const events = [];
@@ -57,7 +57,15 @@ export function deactivateBlock(id) {
   if (!el) return;
   el.classList.remove('active');
   el.querySelector('.block-tile').textContent = '';
-  el.querySelector('.block-num').textContent = id;
-  el.querySelector('.block-placeholder').style.display = 'flex';
-  el.querySelector('.block-sprite').style.display = 'none';
+  const defaultKey = `${id}_default`;
+  const img = el.querySelector('.block-sprite');
+  if (spriteImages[defaultKey]) {
+    img.src = spriteImages[defaultKey];
+    img.style.display = 'block';
+    el.querySelector('.block-placeholder').style.display = 'none';
+  } else {
+    el.querySelector('.block-num').textContent = id;
+    el.querySelector('.block-placeholder').style.display = 'flex';
+    img.style.display = 'none';
+  }
 }
